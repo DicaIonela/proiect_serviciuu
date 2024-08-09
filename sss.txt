@@ -1,0 +1,51 @@
+using System;
+using System.Diagnostics;
+using System.Linq;
+using System.Windows.Forms;
+using WixSharp;
+using WixSharp.Forms;
+using System.IO;
+
+namespace GSM_WOL_Installer
+{
+    internal class Program
+    {
+        static void Main()
+        {
+            var project = new ManagedProject("GSM_WOL",
+                new Dir(@"%ProgramFiles%\Practica\GSM_WOL",
+                new Files($@"{Directory.GetParent(Environment.CurrentDirectory).FullName}\GSM_WOL_Proiect\bin\Release\net6.0\win-x64\*.*")));
+            project.GUID = Guid.NewGuid();
+            project.ProductId = Guid.NewGuid();
+            project.ResolveWildCards();
+            var exeFile = project.AllFiles.Single(f =>
+f.Name.EndsWith("GSM_WOL_Proiect.exe"));
+            project.Version = new Version(FileVersionInfo.GetVersionInfo(exeFile.Name).ProductVersion);
+            project.Description = $"GSM";
+            exeFile.ServiceInstaller = new ServiceInstaller
+            {
+                Name = "GSM_WOL",
+                StartOn = SvcEvent.Install, // SvcEvent.Install
+                //StopOn = SvcEvent.InstallUninstall_Wait,
+                StopOn =null,
+                RemoveOn = SvcEvent.Uninstall_Wait,
+            };
+            project.ManagedUI = new ManagedUI();
+            project.ManagedUI.InstallDialogs.Add(Dialogs.Welcome)
+                .Add(Dialogs.InstallDir)
+                .Add(Dialogs.Progress)
+                .Add(Dialogs.Exit);
+            project.ManagedUI.ModifyDialogs.Add(Dialogs.MaintenanceType)
+            .Add(Dialogs.Progress)
+            .Add(Dialogs.Exit);
+            project.MajorUpgrade = new MajorUpgrade
+            {
+                Schedule =UpgradeSchedule.afterInstallInitialize,
+                DowngradeErrorMessage = "A later version of [ProductName] is already installed. Setup will now exit."
+            };
+            project.BuildMsi();
+        }
+
+        
+    }
+}
